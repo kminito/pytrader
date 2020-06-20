@@ -657,7 +657,7 @@ class Kiwoom(QAxWidget):
         :param receive: int - 응답결과(1: 성공, 나머지 실패)
         :param msg: string - 메세지
         """
-
+        print("receiveConditionVer excecuted")
         try:
             if not receive:
                 return
@@ -676,6 +676,7 @@ class Kiwoom(QAxWidget):
             self.conditionLoop.exit()
 
     def receiveTrCondition(self, screenNo, codes, conditionName, conditionIndex, inquiry):
+        print("receiveTrCondition executed")
         """
         (1회성, 실시간) 종목 조건검색 요청시 발생되는 이벤트
 
@@ -702,6 +703,7 @@ class Kiwoom(QAxWidget):
             self.conditionLoop.exit()
 
     def receiveRealCondition(self, code, event, conditionName, conditionIndex):
+        print("receiveRealCondition executed")
         """
         실시간 종목 조건검색 요청시 발생되는 이벤트
 
@@ -717,13 +719,13 @@ class Kiwoom(QAxWidget):
         print("이벤트: ", "종목편입" if event == "I" else "종목이탈")
 
     def getConditionLoad(self):
+        print("getConditionLoad executed")
         """ 조건식 목록 요청 메서드 """
 
         if not self.getConnectState():
             raise KiwoomConnectError()
 
         isLoad = self.dynamicCall("GetConditionLoad()")
-
         # 요청 실패시
         if not isLoad:
             raise KiwoomProcessingError("getConditionLoad(): 조건식 요청 실패")
@@ -733,6 +735,7 @@ class Kiwoom(QAxWidget):
         self.conditionLoop.exec_()
 
     def getConditionNameList(self):
+        print("getConditionNameList executed")
         """
         조건식 획득 메서드
 
@@ -759,6 +762,7 @@ class Kiwoom(QAxWidget):
         return conditionDictionary
 
     def sendCondition(self, screenNo, conditionName, conditionIndex, isRealTime):
+        print("sendCondition executed")
         """
         종목 조건검색 요청 메서드
 
@@ -796,6 +800,7 @@ class Kiwoom(QAxWidget):
         self.conditionLoop.exec_()
 
     def sendConditionStop(self, screenNo, conditionName, conditionIndex):
+        print("sendConditionStop executed")
         """ 종목 조건검색 중지 메서드 """
 
         if not self.getConnectState():
@@ -1387,7 +1392,18 @@ if __name__ == "__main__":
         else:
             print("모의투자 서버입니다.")
 
+        # kiwoom.getConditionLoad()
+        # kiwoom.sendCondition("0","test2",1,0)
+        cnt = int(kiwoom.getLoginInfo("ACCOUNT_CNT"))
+        accountList = kiwoom.getLoginInfo("ACCNO").split(';')
+
+
+        kiwoom.setInputValue("계좌번호", accountList[0])
+        kiwoom.setInputValue("비밀번호", "0000")
+        kiwoom.commRqData("계좌평가잔고내역요청", "opw00018", 0, "2000")
+        print(kiwoom.opw00018Data['stocks'])
+
     except Exception as e:
         print(e)
-
+    
     sys.exit(app.exec_())
