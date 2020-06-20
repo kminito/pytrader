@@ -946,7 +946,10 @@ class Kiwoom(QAxWidget):
             formatData = '{:-,d}'.format(d)
 
         elif percent == 1:
-            f = int(data) / 100
+            try: 
+                f = int(data) / 100
+            except:
+                f = float(data) / 100
             formatData = '{:-,.2f}'.format(f)
 
         elif percent == 2:
