@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>957</width>
+    <width>1100</width>
     <height>739</height>
    </rect>
   </property>
@@ -236,7 +236,7 @@
      <rect>
       <x>230</x>
       <y>20</y>
-      <width>721</width>
+      <width>821</width>
       <height>461</height>
      </rect>
     </property>
@@ -248,7 +248,7 @@
       <rect>
        <x>11</x>
        <y>30</y>
-       <width>691</width>
+       <width>791</width>
        <height>91</height>
       </rect>
      </property>
@@ -295,7 +295,7 @@
       <rect>
        <x>11</x>
        <y>130</y>
-       <width>691</width>
+       <width>791</width>
        <height>271</height>
       </rect>
      </property>
@@ -332,11 +332,16 @@
        <string>수익률 (%)</string>
       </property>
      </column>
+     <column>
+      <property name="text">
+       <string>종목번호</string>
+      </property>
+     </column>
     </widget>
     <widget class="QCheckBox" name="realtimeCheckBox">
      <property name="geometry">
       <rect>
-       <x>480</x>
+       <x>580</x>
        <y>421</y>
        <width>111</width>
        <height>19</height>
@@ -349,7 +354,7 @@
     <widget class="QPushButton" name="inquiryBtn">
      <property name="geometry">
       <rect>
-       <x>600</x>
+       <x>710</x>
        <y>417</y>
        <width>93</width>
        <height>28</height>
@@ -365,7 +370,7 @@
      <rect>
       <x>231</x>
       <y>479</y>
-      <width>720</width>
+      <width>821</width>
       <height>181</height>
      </rect>
     </property>
@@ -377,7 +382,7 @@
       <rect>
        <x>11</x>
        <y>30</y>
-       <width>691</width>
+       <width>791</width>
        <height>140</height>
       </rect>
      </property>
@@ -442,7 +447,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>957</width>
+     <width>1100</width>
      <height>26</height>
     </rect>
    </property>

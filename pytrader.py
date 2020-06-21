@@ -3,6 +3,10 @@ QtDesigner로 만든 UI와 해당 UI의 위젯에서 발생하는 이벤트를 �
 
 author: 서경동
 last edit: 2017. 01. 18
+https://github.com/kdseo/PyTrader
+
+
+다운받아서 수정 : kminito
 """
 
 
@@ -56,6 +60,10 @@ class MyWindow(QMainWindow, ui):
         # 자동 선정 종목 리스트 테이블 설정
         self.setAutomatedStocks()
 
+        # 조건검색 테스트
+        # self.kiwoom.getConditionLoad()
+        # self.kiwoom.sendCondition("0","test2",1,1)
+
     def timeout(self):
         """ 타임아웃 이벤트가 발생하면 호출되는 메서드 """
 
@@ -94,10 +102,12 @@ class MyWindow(QMainWindow, ui):
         else:
             if self.realtimeCheckBox.isChecked():
                 self.inquiryBalance()
+                # 조건 검색 테스트용
+                # self.conditionOrder()
+
 
     def setCodeName(self):
         """ 종목코드에 해당하는 한글명을 codeNameLineEdit에 설정한다. """
-
         code = self.codeLineEdit.text()
 
         if code in self.codeList:
@@ -307,8 +317,43 @@ class MyWindow(QMainWindow, ui):
                 for data in result:
                     f.write(data)
 
+    # 조건 검색 후 매수 함수
+    def conditionOrder(self):
+        print("conditinoOrder executed")
+        account = self.accountComboBox.currentText()
+
+        time.sleep(1)
+        # self.kiwoom.setInputValue("계좌번호", accountList[0])
+        # self.kiwoom.setInputValue("비밀번호", "0000")
+        # self.kiwoom.commRqData("계좌평가잔고내역요청", "opw00018", 0, "2000")
+        existStocks = [x[0]for x in self.kiwoom.opw00018Data['stocks']]
+        
+        # self.kiwoom.getConditionLoad()
+        # time.sleep(0.5)
+        # self.kiwoom.sendCondition("0","test2",1,1)
+
+        codes = self.kiwoom.conditionCodeList
+        # self.kiwoom.sendConditionStop("0", "test2", 1)
+
+        # 세개만 테스트
+        # for code in codes[:3]:                
+        #     if code in existStocks:
+        #         pass
+        #     else:
+        #         self.kiwoom.sendOrder("자동매수주문", "0101", account, 1, code, 1, 0, "시장가", "")
+        #         time.sleep(0.3)
+
+        print("conditinoOrder finished")
+        time.sleep(3)
+
+    def sell_2per(self):
+        # self.kiwoom.setInputValue("계좌번호", accountList[0])
+        # self.kiwoom.setInputValue("비밀번호", "0000")
+        # self.kiwoom.commRqData("계좌평가잔고내역요청", "opw00018", 0, "2000")
+        existStocks = [x[0]for x in self.kiwoom.opw00018Data['stocks']]
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     myWindow = MyWindow()
+   
     sys.exit(app.exec_())

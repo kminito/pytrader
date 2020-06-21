@@ -5,6 +5,8 @@ OCX 사용을 위해 QAxWidget 클래스를 상속받아서 구현하였으며,
 
 author: 서경동
 last edit: 2017. 02. 05
+
+
 """
 
 
@@ -15,6 +17,7 @@ from PyQt5.QAxContainer import QAxWidget
 from PyQt5.QtCore import QEventLoop
 from PyQt5.QtWidgets import QApplication
 from pandas import DataFrame
+import time
 
 
 class Kiwoom(QAxWidget):
@@ -36,6 +39,7 @@ class Kiwoom(QAxWidget):
 
         # 조건식
         self.condition = None
+        self.conditionCodeList = None
 
         # 에러
         self.error = None
@@ -221,7 +225,7 @@ class Kiwoom(QAxWidget):
 
             # 보유 종목 정보
             cnt = self.getRepeatCnt(trCode, requestName)
-            keyList = ["종목명", "보유수량", "매입가", "현재가", "평가손익", "수익률(%)"]
+            keyList = ["종목명", "보유수량", "매입가", "현재가", "평가손익", "수익률(%)", "종목번호"]
 
             for i in range(cnt):
                 stock = []
@@ -231,6 +235,9 @@ class Kiwoom(QAxWidget):
 
                     if key.startswith("수익률"):
                         value = self.changeFormat(value, 2)
+                    elif key == "종목번호":
+                        value = value[1:]
+
                     elif key != "종목명":
                         value = self.changeFormat(value)
 
@@ -244,6 +251,7 @@ class Kiwoom(QAxWidget):
             pass
 
     def receiveRealData(self, code, realType, realData):
+        print("receiveRealData executed")
         """
         실시간 데이터 수신 이벤트
 
@@ -274,7 +282,7 @@ class Kiwoom(QAxWidget):
             for fid in sorted(RealType.REALTYPE[realType].keys()):
                 value = self.getCommRealData(codeOrNot, fid)
                 data.append(value)
-
+            print(data) # 권민
             # TODO: DB에 저장
             self.log.debug(data)
 
@@ -579,6 +587,7 @@ class Kiwoom(QAxWidget):
         self.dynamicCall("DisconnectRealData(QString)", screenNo)
 
     def getCommRealData(self, code, fid):
+        print("getCommRealData executed")
         """
         실시간 데이터 획득 메서드
 
@@ -698,7 +707,8 @@ class Kiwoom(QAxWidget):
 
             print(codeList)
             print("종목개수: ", len(codeList))
-
+            self.conditionCodeList = codeList
+            
         finally:
             self.conditionLoop.exit()
 
@@ -1392,16 +1402,23 @@ if __name__ == "__main__":
         else:
             print("모의투자 서버입니다.")
 
+
         # kiwoom.getConditionLoad()
         # kiwoom.sendCondition("0","test2",1,0)
-        cnt = int(kiwoom.getLoginInfo("ACCOUNT_CNT"))
+        # cnt = int(kiwoom.getLoginInfo("ACCOUNT_CNT"))
+        # accountList = kiwoom.getLoginInfo("ACCNO").split(';')
+
         accountList = kiwoom.getLoginInfo("ACCNO").split(';')
-
-
         kiwoom.setInputValue("계좌번호", accountList[0])
         kiwoom.setInputValue("비밀번호", "0000")
         kiwoom.commRqData("계좌평가잔고내역요청", "opw00018", 0, "2000")
         print(kiwoom.opw00018Data['stocks'])
+        
+        for x in kiwoom.opw00018Data['stocks']:
+            if float(x[5]) >= 2 or float(x[5]) < -2:
+                kiwoom.sendOrder("자동매도주문", "0101", accountList[0], 2, x[6], int(x[1]), 0 , "03" , "")
+                print("{} sell order".format(x[0]))
+                time.sleep(0.3)
 
     except Exception as e:
         print(e)
