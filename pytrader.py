@@ -9,13 +9,13 @@ https://github.com/kdseo/PyTrader
 다운받아서 수정 : kminito
 """
 
-
+import copy
 import sys, time
 from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QTableWidget, QTableWidgetItem
 from PyQt5.QtCore import Qt, QTimer, QTime
 from PyQt5 import uic
 from Kiwoom import Kiwoom, ParameterTypeError, ParameterValueError, KiwoomProcessingError, KiwoomConnectError
-
+import datetime
 
 ui = uic.loadUiType("pytrader.ui")[0]
 
@@ -48,6 +48,11 @@ class MyWindow(QMainWindow, ui):
         self.inquiryTimer.start(1000*10)
         self.inquiryTimer.timeout.connect(self.timeout)
 
+        # 자동 매도 테스트 타이머
+        self.testTimer = QTimer(self)
+        self.testTimer.start(1000*10)
+        self.testTimer.timeout.connect(self.timeout)
+
         self.setAccountComboBox()
         self.codeLineEdit.textChanged.connect(self.setCodeName)
         self.orderBtn.clicked.connect(self.sendOrder)
@@ -60,9 +65,20 @@ class MyWindow(QMainWindow, ui):
         # 자동 선정 종목 리스트 테이블 설정
         self.setAutomatedStocks()
 
-        # 조건검색 테스트
-        # self.kiwoom.getConditionLoad()
-        # self.kiwoom.sendCondition("0","test2",1,1)
+        # 한번 살 금액
+        self.money = 100000
+
+
+        # self.inquiryBalance()
+        time.sleep(1)
+        self.kiwoom.getConditionLoad()
+        self.kiwoom.sendCondition("0","danta1",0,1)
+        
+
+    def qty_cal(self,price):
+        
+        return self.money // price
+
 
     def timeout(self):
         """ 타임아웃 이벤트가 발생하면 호출되는 메서드 """
@@ -99,12 +115,51 @@ class MyWindow(QMainWindow, ui):
                 self.kiwoom.msg = ""
 
         # 실시간 조회 타이머
-        else:
+        elif id(sender) == id(self.inquiryTimer):
             if self.realtimeCheckBox.isChecked():
                 self.inquiryBalance()
-                # 조건 검색 테스트용
-                # self.conditionOrder()
 
+        # elif id(sender) == id(self.testTimer):
+        #     print("test timer - 10초")
+        #     # self.kiwoom.sendConditionStop("0","danta1",0)
+        #     # self.inquiryBalance()
+        #     self.sell_test()
+            
+        #     # self.kiwoom.conditionCodeList = []
+        #     # time.sleep(1)
+            # self.kiwoom.sendCondition("0","danta1",0,1)
+    
+
+    # def sell_test(self):
+    #     b = copy.deepcopy(self.kiwoom.conditionCodeList)
+    #     self.kiwoom.conditionCodeList = []
+    #     print(b)
+        
+    #     for code in b :
+    #             if time.time() - self.kiwoom.order_time > 0.3:
+    #                 self.kiwoom.sendOrder("자동매수주문", "0102", "8134931511", 1, code, 1, 0, "03", "")
+    #                 time.sleep(0.3)  
+    #                 self.kiwoom.order_time = time.time()      
+
+    #     self.kiwoom.setInputValue("계좌번호", self.accountComboBox.currentText())
+    #     self.kiwoom.setInputValue("비밀번호", "0000")
+
+    #     if time.time() - self.kiwoom.order_time > 0.3:
+    #         self.kiwoom.commRqData("계좌평가잔고내역요청", "opw00018", 0, "2000")
+    #         time.sleep(0.2)
+    #         self.kiwoom.order_time = time.time()
+
+    #     if self.kiwoom.opw00018Data['stocks']:            
+    #         for x in self.kiwoom.opw00018Data['stocks']:
+    #             print(x)
+    #             if float(x[5]) >= 2 or float(x[5]) < -1:
+    #                 print("매도조건해당")
+    #                 if time.time() - self.kiwoom.order_time > 0.3:
+    #                     self.kiwoom.sendOrder("자동매도주문", "0101", "8134931511", 2, x[6], int(x[1]), 0 , "03" , "")
+    #                     time.sleep(0.5)
+    #                     self.kiwoom.order_time = time.time()
+    #                     print("{} sell order".format(x[0]))
+    #     print("sell_test done")
 
     def setCodeName(self):
         """ 종목코드에 해당하는 한글명을 codeNameLineEdit에 설정한다. """
@@ -317,43 +372,8 @@ class MyWindow(QMainWindow, ui):
                 for data in result:
                     f.write(data)
 
-    # 조건 검색 후 매수 함수
-    def conditionOrder(self):
-        print("conditinoOrder executed")
-        account = self.accountComboBox.currentText()
-
-        time.sleep(1)
-        # self.kiwoom.setInputValue("계좌번호", accountList[0])
-        # self.kiwoom.setInputValue("비밀번호", "0000")
-        # self.kiwoom.commRqData("계좌평가잔고내역요청", "opw00018", 0, "2000")
-        existStocks = [x[0]for x in self.kiwoom.opw00018Data['stocks']]
-        
-        # self.kiwoom.getConditionLoad()
-        # time.sleep(0.5)
-        # self.kiwoom.sendCondition("0","test2",1,1)
-
-        codes = self.kiwoom.conditionCodeList
-        # self.kiwoom.sendConditionStop("0", "test2", 1)
-
-        # 세개만 테스트
-        # for code in codes[:3]:                
-        #     if code in existStocks:
-        #         pass
-        #     else:
-        #         self.kiwoom.sendOrder("자동매수주문", "0101", account, 1, code, 1, 0, "시장가", "")
-        #         time.sleep(0.3)
-
-        print("conditinoOrder finished")
-        time.sleep(3)
-
-    def sell_2per(self):
-        # self.kiwoom.setInputValue("계좌번호", accountList[0])
-        # self.kiwoom.setInputValue("비밀번호", "0000")
-        # self.kiwoom.commRqData("계좌평가잔고내역요청", "opw00018", 0, "2000")
-        existStocks = [x[0]for x in self.kiwoom.opw00018Data['stocks']]
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     myWindow = MyWindow()
-   
     sys.exit(app.exec_())
