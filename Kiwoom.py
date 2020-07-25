@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Kiwoom 클래스는 OCX를 통해 API 함수를 호출할 수 있도록 구현되어 있습니다.
 OCX 사용을 위해 QAxWidget 클래스를 상속받아서 구현하였으며,
@@ -5,8 +6,6 @@ OCX 사용을 위해 QAxWidget 클래스를 상속받아서 구현하였으며,
 
 author: 서경동
 last edit: 2017. 02. 05
-
-
 """
 
 
@@ -15,32 +14,35 @@ import logging
 import logging.config
 from PyQt5.QAxContainer import QAxWidget
 from PyQt5.QtCore import QEventLoop
-from PyQt5.QtCore import QObject
-from PyQt5.QtCore import QThread
 from PyQt5.QtWidgets import QApplication
 from pandas import DataFrame
 import time
+
+from PyQt5.QtCore import QObject
+from PyQt5.QtCore import QThread
+
+
 from collections import deque
 from threading import Lock
 
-
-rate_limit = 0.5
-
+요청주기 = 0.2
+account_no = "8134931511"
 
 class RequestThreadWorker(QObject):
-    def __init__(self):
+    def __init__(self,ins):
         """요청 쓰레드
         """
         super().__init__()
         self.request_queue = deque()  # 요청 큐
         self.request_thread_lock = Lock()
+        self.ins = ins
 
         # 간혹 요청에 대한 결과가 콜백으로 오지 않음
         # 마지막 요청을 저장해 뒀다가 일정 시간이 지나도 결과가 안오면 재요청
         self.retry_timer = None
 
     def retry(self, request):
-        Kiwoom.log.debug("키움 함수 재시도: %s %s %s" % (request[0].__name__, request[1], request[2]))
+        # logger.debug("키움 함수 재시도: %s %s %s" % (request[0].__name__, request[1], request[2]))
         self.request_queue.appendleft(request)
 
     def run(self):
@@ -50,20 +52,20 @@ class RequestThreadWorker(QObject):
             try:
                 request = self.request_queue.popleft()
             except IndexError as e:
-                time.sleep(rate_limit)
+                time.sleep(요청주기)
                 continue
 
             # 요청 실행
-            Kiwoom.log.debug("키움 함수 실행: %s %s %s" % (request[0].__name__, request[1], request[2]))
-            request[0](trader, *request[1], **request[2])
+            # logger.debug("키움 함수 실행: %s %s %s" % (request[0].__name__, request[1], request[2])
+            request[0](self.ins, *request[1], **request[2])
 
             # 요청에대한 결과 대기
             if not self.request_thread_lock.acquire(blocking=True, timeout=5):
                 # 요청 실패
-                time.sleep(rate_limit)
+                time.sleep(요청주기)
                 self.retry(request)  # 실패한 요청 재시도
 
-            time.sleep(rate_limit)  # 0.2초 이상 대기 후 마무리
+            time.sleep(요청주기)  # 0.2초 이상 대기 후 마무리
 
 class SyncRequestDecorator:
     '''키움 API 동기화 데코레이터
@@ -77,7 +79,7 @@ class SyncRequestDecorator:
     @staticmethod
     def kiwoom_sync_callback(func):
         def func_wrapper(self, *args, **kwargs):
-            Kiwoom.log.debug("키움 함수 콜백: %s %s %s" % (func.__name__, args, kwargs))
+            # logger.debug("키움 함수 콜백: %s %s %s" % (func.__name__, args, kwargs))
             func(self, *args, **kwargs)  # 콜백 함수 호출
             if self.request_thread_worker.request_thread_lock.locked():
                 self.request_thread_worker.request_thread_lock.release()  # 요청 쓰레드 잠금 해제
@@ -85,25 +87,11 @@ class SyncRequestDecorator:
 
 
 
+
 class Kiwoom(QAxWidget):
-
-
-    # 초당 5회 제한이므로 최소한 0.2초 대기해야 함
-    # (2018년 10월 기준) 1시간에 1000회 제한하므로 3.6초 이상 대기해야 함
-    #rate_limit = 4.0
-    # But I won't be making too many requests so... Uhm... unused.
 
     def __init__(self):
         super().__init__()
-
-        ## Thread 작업을 위함
-        self.request_thread_worker = RequestThreadWorker()
-        self.request_thread = QThread()
-        self.request_thread_worker.moveToThread(self.request_thread)
-        self.request_thread.started.connect(self.request_thread_worker.run)
-        self.request_thread.start()
-
-
 
         self.setControl("KHOPENAPI.KHOpenAPICtrl.1")
 
@@ -159,21 +147,27 @@ class Kiwoom(QAxWidget):
         self.accountList = None
         self.order_time = time.time()
 
+        self.request_thread_worker = RequestThreadWorker(self)
+        self.request_thread = QThread()
+        self.request_thread_worker.moveToThread(self.request_thread)
+        self.request_thread.started.connect(self.request_thread_worker.run)
+        self.request_thread.start()
+
     ###############################################################
     # 로깅용 메서드 정의                                               #
     ###############################################################
 
-    # def logger(origin):
-    #     def wrapper(*args, **kwargs):
-    #         args[0].log.debug('{} args - {}, kwargs - {}'.format(origin.__name__, args, kwargs))
-    #         return origin(*args, **kwargs)
+    def logger(origin):
+        def wrapper(*args, **kwargs):
+            args[0].log.debug('{} args - {}, kwargs - {}'.format(origin.__name__, args, kwargs))
+            return origin(*args, **kwargs)
 
-    #     return wrapper
+        return wrapper
 
     ###############################################################
     # 이벤트 정의                                                    #
     ###############################################################
-
+    @SyncRequestDecorator.kiwoom_sync_callback
     def eventConnect(self, returnCode):
         """
         통신 연결 상태 변경시 이벤트
@@ -337,7 +331,6 @@ class Kiwoom(QAxWidget):
         except AttributeError:
             pass
 
-    @SyncRequestDecorator.kiwoom_sync_callback
     def receiveRealData(self, code, realType, realData):
         print("receiveRealData executed")
         """
@@ -400,7 +393,7 @@ class Kiwoom(QAxWidget):
     ###############################################################
     # 메서드 정의: 로그인 관련 메서드                                    #
     ###############################################################
-
+    
     def commConnect(self):
         """
         로그인을 시도합니다.
@@ -412,7 +405,7 @@ class Kiwoom(QAxWidget):
         self.dynamicCall("CommConnect()")
         self.loginLoop = QEventLoop()
         self.loginLoop.exec_()
-
+    
     def getConnectState(self):
         """
         현재 접속상태를 반환합니다.
@@ -425,6 +418,8 @@ class Kiwoom(QAxWidget):
 
         state = self.dynamicCall("GetConnectState()")
         return state
+
+
 
     def getLoginInfo(self, tag, isConnectState=False):
         """
@@ -460,6 +455,7 @@ class Kiwoom(QAxWidget):
 
         return info
 
+    
     def getServerGubun(self):
         """
         서버구분 정보를 반환한다.
@@ -488,8 +484,7 @@ class Kiwoom(QAxWidget):
             raise ParameterTypeError()
 
         self.dynamicCall("SetInputValue(QString, QString)", key, value)
-
-    @SyncRequestDecorator.kiwoom_sync_request
+    
     def commRqData(self, requestName, trCode, inquiry, screenNo):
         """
         키움서버에 TR 요청을 한다.
@@ -520,8 +515,7 @@ class Kiwoom(QAxWidget):
         # 루프 생성: receiveTrData() 메서드에서 루프를 종료시킨다.
         self.requestLoop = QEventLoop()
         self.requestLoop.exec_()
-
-    @SyncRequestDecorator.kiwoom_sync_request
+    
     def commGetData(self, trCode, realType, requestName, index, key):
         """
         데이터 획득 메서드
@@ -539,7 +533,7 @@ class Kiwoom(QAxWidget):
 
         return self.getCommData(trCode, requestName, index, key)
 
-    @SyncRequestDecorator.kiwoom_sync_request
+    
     def getCommData(self, trCode, requestName, index, key):
         """
         데이터 획득 메서드
@@ -750,6 +744,7 @@ class Kiwoom(QAxWidget):
     # 메서드 정의: 조건검색 관련 메서드와 이벤트                            #
     ###############################################################
 
+    @SyncRequestDecorator.kiwoom_sync_callback
     def receiveConditionVer(self, receive, msg):
         """
         getConditionLoad() 메서드의 조건식 목록 요청에 대한 응답 이벤트
@@ -775,6 +770,7 @@ class Kiwoom(QAxWidget):
         finally:
             self.conditionLoop.exit()
 
+    @SyncRequestDecorator.kiwoom_sync_callback
     def receiveTrCondition(self, screenNo, codes, conditionName, conditionIndex, inquiry):
         print("receiveTrCondition executed")
         """
@@ -807,7 +803,7 @@ class Kiwoom(QAxWidget):
         finally:
             self.conditionLoop.exit()
 
-    @SyncRequestDecorator.kiwoom_sync_callback
+
     def receiveRealCondition(self, code, event, conditionName, conditionIndex):
         print("receiveRealCondition executed")
         """
@@ -821,17 +817,17 @@ class Kiwoom(QAxWidget):
 
         print("[receiveRealCondition]")
         print("종목코드: ", code)
-        # print("이벤트: ", "종목편입" if event == "I" else "종목이탈")
+        print("이벤트: ", "종목편입" if event == "I" else "종목이탈")
         # if code not in self.conditionCodeList:
         #     self.conditionCodeList.append(code)
         # # print(self.conditionCodeList)
-        # if self.conditionbuy == True and event == "I" and time.time() - self.order_time > 0.3 :
-        #     self.sendOrder("자동매수주문", "0102", "8134931511", 1, code, 1, 0, "03", "")
+        # # if self.conditionbuy == True and event == "I" and time.time() - self.order_time > 0.3 :
+        # self.sendOrder("자동매수주문", "0102", account_no, 1, code, 1, 0, "03", "")
         #     self.order_time = time.time()
         #     print("condition send buy done") 
 
 
-    @SyncRequestDecorator.kiwoom_sync_request
+
     def getConditionLoad(self):
         print("getConditionLoad executed")
         """ 조건식 목록 요청 메서드 """
@@ -848,7 +844,6 @@ class Kiwoom(QAxWidget):
         self.conditionLoop = QEventLoop()
         self.conditionLoop.exec_()
 
-    @SyncRequestDecorator.kiwoom_sync_request
     def getConditionNameList(self):
         print("getConditionNameList executed")
         """
@@ -876,7 +871,6 @@ class Kiwoom(QAxWidget):
 
         return conditionDictionary
 
-    @SyncRequestDecorator.kiwoom_sync_request
     def sendCondition(self, screenNo, conditionName, conditionIndex, isRealTime):
         print("sendCondition executed")
         """
@@ -908,15 +902,15 @@ class Kiwoom(QAxWidget):
         isRequest = self.dynamicCall("SendCondition(QString, QString, int, int",
                                      screenNo, conditionName, conditionIndex, isRealTime)
 
-        if not isRequest:
-            raise KiwoomProcessingError("sendCondition(): 조건검색 요청 실패")
+        # if not isRequest:
+        #     raise KiwoomProcessingError("sendCondition(): 조건검색 요청 실패")
 
         # receiveTrCondition() 이벤트 메서드에서 루프 종료
         self.conditionLoop = QEventLoop()
         self.conditionLoop.exec_()
 
-    
     def sendConditionStop(self, screenNo, conditionName, conditionIndex):
+
         print("sendConditionStop executed")
         """ 종목 조건검색 중지 메서드 """
 
@@ -983,7 +977,6 @@ class Kiwoom(QAxWidget):
         # receiveTrData() 에서 루프종료
         self.orderLoop = QEventLoop()
         self.orderLoop.exec_()
-
 
     def getChejanData(self, fid):
         """
@@ -1088,6 +1081,11 @@ class Kiwoom(QAxWidget):
         self.opw00001Data = 0
         self.opw00018Data = {'accountEvaluation': [], 'stocks': []}
 
+
+    def opw00018(self):
+        self.setInputValue("계좌번호", account_no)
+        self.setInputValue("비밀번호", "0000")
+        self.commRqData("계좌평가잔고내역요청", "opw00018", 0, "2000")
 
 
 class ParameterTypeError(Exception):
