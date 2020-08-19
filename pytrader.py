@@ -57,6 +57,8 @@ class MyWindow(QMainWindow, ui):
         self.codeLineEdit.textChanged.connect(self.setCodeName)
         self.orderBtn.clicked.connect(self.sendOrder)
         self.inquiryBtn.clicked.connect(self.inquiryBalance)
+        self.sellAllBtn.clicked.connect(self.sellAll)
+
 
         # 자동 주문
         # 자동 주문을 활성화 하려면 True로 설정
@@ -70,8 +72,8 @@ class MyWindow(QMainWindow, ui):
 
 
         # self.inquiryBalance()
-        self.kiwoom.getConditionLoad()
-        self.kiwoom.sendCondition("0","danta1",0,1)
+        # self.kiwoom.getConditionLoad()
+        # self.kiwoom.sendCondition("0","danta1",0,1)
         
 
     def qty_cal(self,price):
@@ -119,12 +121,12 @@ class MyWindow(QMainWindow, ui):
                 self.inquiryBalance()
 
         elif id(sender) == id(self.testTimer):
-            print("test timer - 10초")
+            print("test timer")
             # self.kiwoom.sendConditionStop("0","danta1",0)
             # self.inquiryBalance()
-            self.sell_test()
+            # self.sell_test()
             # self.kiwoom.sendCondition("0","danta1",0,1)
-            print("sendCondition 재시작 (test timer")
+            # print("sendCondition 재시작 (test timer")
     
 
     def sell_test(self):
@@ -136,7 +138,7 @@ class MyWindow(QMainWindow, ui):
         #         if float(x[5]) >= 10 or float(x[5]) < -8:
         #             print(x)
         #             print("매도조건해당")
-        #             self.kiwoom.sendOrder("자동매도주문", "0101", "8134931511", 2, x[6], int(x[1]), 0 , "03" , "")
+        #             self.kiwoom.sendOrder("자동매도주문", "0101", account, 2, x[6], int(x[1]), 0 , "03" , "")
         #             print("{} sell order".format(x[0]))
         print("sell_test done")
 
@@ -179,7 +181,8 @@ class MyWindow(QMainWindow, ui):
 
     def inquiryBalance(self):
         """ 예수금상세현황과 계좌평가잔고내역을 요청후 테이블에 출력한다. """
-
+        print("계좌")
+        print(self.accountComboBox.currentText())
         self.inquiryTimer.stop()
 
         try:
@@ -234,6 +237,17 @@ class MyWindow(QMainWindow, ui):
 
         # inquiryTimer 재시작
         self.inquiryTimer.start(1000*10)
+
+
+
+    def sellAll(self):
+        print("sell all will be executed")
+        self.inquiryBalance()
+        if self.kiwoom.opw00018Data['stocks']:            
+            for x in self.kiwoom.opw00018Data['stocks']:
+                    self.kiwoom.sendOrder("자동매도주문", "0101", account, 2, x[6], int(x[1]), 0 , "03" , "")
+                    print("{} sell order".format(x[0]))
+
 
     # 경고창
     def showDialog(self, grade, error):
@@ -355,4 +369,11 @@ class MyWindow(QMainWindow, ui):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     myWindow = MyWindow()
+    a = myWindow.kiwoom.getCodeListByMarket("8")
+    print(len(a))
+    # for code in a:
+    #     print(code)
+    #     print(myWindow.kiwoom.getMasterCodeName(code))
+
     sys.exit(app.exec_())
+

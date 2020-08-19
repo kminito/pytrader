@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1100</width>
-    <height>739</height>
+    <height>790</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -362,6 +362,24 @@
      </property>
      <property name="text">
       <string>조회</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="sellAllBtn">
+     <property name="geometry">
+      <rect>
+       <x>20</x>
+       <y>420</y>
+       <width>93</width>
+       <height>28</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>맑은 고딕</family>
+      </font>
+     </property>
+     <property name="text">
+      <string>전량 매도</string>
      </property>
     </widget>
    </widget>
